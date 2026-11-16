@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#12080c">
+<meta name="description" content="Virtual launch of the Governor Awards. Cut the ribbon to begin.">
+<title>Governor Awards | Virtual Launch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+:root {
+  --gold: #e4c48a;
+  --gold-bright: #fff4d4;
+  --ink: #10080c;
+  --ivory: #f6f0e6;
+  --mist: #d9d0c4;
+  --glass: rgba(255, 248, 240, .1);
+  --glass-line: rgba(255, 244, 220, .38);
+  --curtain: 2.35s;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--ink); color: var(--ivory); }
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { font-family: Outfit, "Segoe UI", sans-serif; overflow: hidden; }
+button, a { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
+
+.scene {
+  position: relative;
+  height: 100dvh;
+  min-height: 100svh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 232, 196, .2), transparent 36%),
+    radial-gradient(ellipse at 50% 70%, rgba(92, 28, 44, .28), transparent 46%),
+    linear-gradient(180deg, #1a1420 0%, #121018 42%, #1c1218 100%);
+}
+.glow, .floor, .glass-stage { position: absolute; pointer-events: none; }
+.glow {
+  inset: -10% 10% auto;
+  height: 55%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 236, 206, .28), transparent 68%);
+}
+.floor {
+  left: -10%; right: -10%; bottom: -8vh;
+  height: 36vh;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 228, 190, .16), transparent 62%);
+}
+.glass-stage {
+  z-index: 1;
+  left: 7%;
+  right: 7%;
+  bottom: 0;
+  height: 28vh;
+  border-radius: 28px 28px 0 0;
+  background: linear-gradient(180deg, rgba(255, 250, 242, .14), rgba(255, 255, 255, .03) 42%, transparent);
+  border: 1px solid rgba(255, 244, 220, .22);
+  border-bottom: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45);
+  backdrop-filter: blur(10px);
+}
+.frame {
+  position: absolute;
+  z-index: 12;
+  inset: clamp(12px, 2vw, 20px);
+  border: 1px solid rgba(255, 244, 220, .16);
+  border-radius: 18px;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
+}
+
+.topbar {
+  position: fixed;
+  z-index: 40;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 26px 32px;
+  pointer-events: none;
+}
+.live, .control {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 10px 30px rgba(0, 0, 0, .18);
+  backdrop-filter: blur(16px);
+}
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--gold-bright);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.dot {
+  width: 7px; height: 7px; flex: none;
+  border-radius: 50%;
+  background: #3ee08a;
+  box-shadow: 0 0 0 0 rgba(62, 224, 138, .7);
+  animation: pulse 1.8s ease-out infinite;
+}
+@keyframes pulse {
+  70% { box-shadow: 0 0 0 7px rgba(62, 224, 138, 0); }
+}
+.controls { display: flex; gap: 8px; pointer-events: auto; }
+.control {
+  border-radius: 999px;
+  padding: 9px 14px;
+  color: var(--gold-bright);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.control:hover { background: rgba(255, 248, 240, .18); }
+.control.needs-gesture { animation: attention 1.6s ease-out infinite; }
+@keyframes attention {
+  50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 0 0 6px rgba(228, 196, 138, .18); }
+}
+.replay { display: none; }
+body.is-revealed .replay { display: inline-flex; }
+
+.curtain {
+  position: absolute;
+  z-index: 20;
+  top: 0; bottom: 0;
+  width: 54%;
+  transition: transform var(--curtain) cubic-bezier(.7, .02, .2, 1);
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, .42) 0 16px,
+      rgba(255, 214, 214, .13) 24px 30px,
+      rgba(0, 0, 0, .08) 38px 52px,
+      rgba(0, 0, 0, .38) 66px 84px),
+    linear-gradient(180deg, rgba(0, 0, 0, .28), transparent 16%, transparent 76%, rgba(0, 0, 0, .5)),
+    linear-gradient(90deg, #14060c 0%, #7d1c34 18%, #3d0d1a 36%, #92243e 54%, #4a1222 72%, #16070e 100%);
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, .45);
+}
+.curtain::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 16px;
+  background: repeating-linear-gradient(90deg, #7a5a28 0 4px, #f3d798 4px 8px, #5c4318 8px 12px);
+}
+.curtain.left { left: 0; box-shadow: inset -28px 0 36px rgba(0, 0, 0, .28), 18px 0 40px rgba(0, 0, 0, .28); }
+.curtain.right { right: 0; box-shadow: inset 28px 0 36px rgba(0, 0, 0, .28), -18px 0 40px rgba(0, 0, 0, .28); }
+.curtain.left::after, .curtain.right::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 16px;
+  width: 22px;
+  background: linear-gradient(90deg, transparent, rgba(255, 228, 196, .2) 40%, #e7c98a 78%, #f8e7b8);
+}
+.curtain.left::after { right: 0; }
+.curtain.right::after { left: 0; transform: scaleX(-1); }
+.scene.open .curtain.left { transform: translateX(-79%); }
+.scene.open .curtain.right { transform: translateX(79%); }
+
+.valance, .valance-gold {
+  position: absolute;
+  z-index: 23;
+  top: 0; left: 0; right: 0;
+  height: 78px;
+  pointer-events: none;
+  clip-path: polygon(
+    0 0, 100% 0, 100% 38%,
+    97% 72%, 94% 42%, 91% 80%, 88% 42%,
+    85% 86%, 82% 44%, 79% 90%, 76% 44%,
+    73% 94%, 70% 46%, 67% 98%, 64% 46%,
+    61% 100%, 58% 48%, 55% 100%, 52% 50%,
+    48% 100%, 45% 50%, 42% 100%, 39% 48%,
+    36% 98%, 33% 46%, 30% 94%, 27% 46%,
+    24% 90%, 21% 44%, 18% 86%, 15% 42%,
+    12% 80%, 9% 42%, 6% 72%, 3% 40%, 0 38%
+  );
+}
+.valance-gold { background: linear-gradient(#f3dd9d, #9a7434); transform: translateY(7px); }
+.valance {
+  background:
+    linear-gradient(180deg, rgba(255, 220, 210, .18), transparent 28%),
+    linear-gradient(180deg, #9a2844, #5a1224 72%, #3a0c16);
+  filter: drop-shadow(0 16px 18px rgba(0, 0, 0, .35));
+}
+
+.plaque {
+  position: absolute;
+  z-index: 24;
+  left: 50%;
+  top: 46%;
+  width: min(88vw, 520px);
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 32px 28px 28px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 250, 244, .16), rgba(28, 16, 22, .42));
+  border: 1px solid rgba(255, 244, 220, .46);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .5),
+    0 24px 60px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(18px);
+  transition: opacity .55s ease, transform .55s ease;
+}
+.scene.open .plaque { opacity: 0; transform: translate(-50%, -56%); pointer-events: none; }
+.kicker {
+  margin: 0 0 12px;
+  color: var(--gold-bright);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+}
+.plaque-title {
+  margin: 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(38px, 6vw, 64px);
+  font-weight: 400;
+  line-height: .98;
+  color: #fff8ec;
+}
+.plaque-note {
+  margin: 14px 0 0;
+  color: var(--mist);
+  font-size: 14px;
+  letter-spacing: .04em;
+}
+
+.ceremony {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  pointer-events: none;
+}
+.cut-button {
+  pointer-events: auto;
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  height: 280px;
+  transform: translateY(-50%);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
+.cut-button:disabled { pointer-events: none; }
+.scene.ready .cut-button:not(:disabled) { cursor: pointer; }
+.scene.cut .cut-button { pointer-events: none; }
+.cut-button:focus-visible { outline: none; }
+.cut-button:focus-visible .bow { filter: drop-shadow(0 0 0 2px #fff6d4) drop-shadow(0 10px 12px rgba(0, 0, 0, .4)); }
+
+.ribbon {
+  position: absolute;
+  top: 50%;
+  height: 30px;
+  margin-top: -15px;
+  width: calc(50% - 36px);
+  background:
+    linear-gradient(#e7c98a, #e7c98a) top / 100% 2px no-repeat,
+    linear-gradient(#a6843e, #a6843e) bottom / 100% 2px no-repeat,
+    linear-gradient(180deg, rgba(255,255,255,.72) 0%, #f6c9cf 10%, #d0455c 30%, #8e1830 52%, #ef7d8b 74%, #6e1024 100%);
+  box-shadow:
+    0 12px 16px rgba(0, 0, 0, .32),
+    inset 0 8px 8px rgba(255, 255, 255, .18),
+    inset 0 -8px 8px rgba(60, 0, 16, .28);
+  transition: transform 1s cubic-bezier(.2, .7, .2, 1), opacity .9s ease;
+}
+.ribbon.left { left: 0; border-radius: 2px 0 0 2px; }
+.ribbon.right { right: 0; border-radius: 0 2px 2px 0; }
+.scene.cut .ribbon.left { transform: translateX(-14px) rotate(5deg); transition-duration: .2s; }
+.scene.cut .ribbon.right { transform: translateX(14px) rotate(-5deg); transition-duration: .2s; }
+.scene.fall .ribbon.left { transform: translate(-70%, 210px) rotate(26deg); opacity: 0; transition-duration: 1.05s; }
+.scene.fall .ribbon.right { transform: translate(70%, 210px) rotate(-26deg); opacity: 0; transition-duration: 1.05s; }
+.scene.ready .cut-button:hover .ribbon { filter: brightness(1.06); }
+
+.bow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 128px;
+  height: 108px;
+  transform: translate(-50%, -58%);
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, .4));
+  transition: opacity .35s ease, transform .35s ease;
+}
+.scene.cut .bow { opacity: 0; transform: translate(-50%, -58%) scale(.7) rotate(12deg); }
+.loop, .knot, .tail { position: absolute; }
+.loop {
+  top: 10px;
+  width: 58px;
+  height: 48px;
+  border-radius: 70% 30% 68% 32%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.75), transparent 28%),
+    linear-gradient(145deg, #ffd0d6, #c4374e 42%, #7c142c 78%);
+  box-shadow: inset 0 0 0 2px rgba(231, 201, 138, .85), inset -8px -6px 10px rgba(80, 0, 16, .25);
+}
+.loop.left { left: 4px; transform: rotate(28deg); }
+.loop.right { right: 4px; transform: scaleX(-1) rotate(28deg); }
+.knot {
+  z-index: 2;
+  left: 48px;
+  top: 28px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 30%, #fff6f4, #e7c98a 36%, #b4233c 70%);
+  box-shadow: inset 0 0 0 2px #f3dd9d, 0 4px 6px rgba(0, 0, 0, .25);
+}
+.tail {
+  top: 52px;
+  width: 24px;
+  height: 52px;
+  background: linear-gradient(90deg, #8e1830, #f0a0aa 42%, #a01c36 70%, #6e1024);
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 50% 74%, 0 100%);
+  box-shadow: inset 0 0 0 1px rgba(231, 201, 138, .7);
+}
+.tail.left { left: 30px; transform: rotate(16deg); }
+.tail.right { right: 30px; transform: rotate(-16deg); }
+
+.shears {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(210px, 46vw);
+  overflow: visible;
+  transform: translate(-50%, -34%) rotate(-20deg);
+  filter: drop-shadow(0 16px 10px rgba(0, 0, 0, .45));
+  transition: transform .25s ease;
+}
+.scene.ready .cut-button:hover .shears { transform: translate(-50%, -36%) rotate(-16deg) scale(1.03); }
+.scene.revealed .shears { opacity: 0; transition: opacity .45s ease; }
+.arm { transform-box: view-box; transform-origin: 120px 128px; transition: transform .12s ease-in; }
+.arm-left { transform: rotate(-20deg); }
+.arm-right { transform: rotate(20deg); }
+.shears.snip .arm-left { transform: rotate(-2deg); }
+.shears.snip .arm-right { transform: rotate(2deg); }
+
+.hint {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 132px);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(255, 250, 244, .12);
+  border: 1px solid rgba(255, 244, 220, .42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4);
+  backdrop-filter: blur(14px);
+  color: var(--gold-bright);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .45s ease;
+}
+.scene.ready .hint { opacity: 1; animation: hint 1.8s ease-in-out infinite; }
+.scene.cut .hint { opacity: 0; animation: none; }
+@keyframes hint {
+  50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 0 0 6px rgba(255, 244, 220, .08); }
+}
+
+.flash {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  background: rgba(255, 248, 236, .92);
+  opacity: 0;
+  pointer-events: none;
+}
+.scene.cut .flash { animation: flash .45s ease forwards; }
+@keyframes flash {
+  0% { opacity: .45; }
+  100% { opacity: 0; }
+}
+.sparkles { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.spark {
+  position: absolute;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: #fff6df;
+  box-shadow: 0 0 10px 2px rgba(231, 201, 138, .8);
+  animation: rise 3.6s ease-in infinite;
+}
+@keyframes rise {
+  0% { transform: translateY(20px) scale(.4); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-170px) scale(.2); opacity: 0; }
+}
+
+.invite {
+  position: relative;
+  z-index: 30;
+  width: min(92vw, 680px);
+  margin: clamp(96px, 13vh, 128px) auto 0;
+  padding: clamp(32px, 5vw, 56px) clamp(22px, 4vw, 48px) clamp(26px, 4vw, 42px);
+  text-align: center;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 250, 244, .16), rgba(18, 12, 16, .72));
+  border: 1px solid rgba(255, 244, 220, .5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .48),
+    inset 0 0 0 8px rgba(16, 8, 12, .18),
+    0 30px 80px rgba(0, 0, 0, .35);
+  backdrop-filter: blur(18px);
+  opacity: 0;
+  transform: translateY(18px) scale(.98);
+  pointer-events: none;
+  transition: opacity .9s ease, transform .9s cubic-bezier(.2, .8, .2, 1);
+}
+.scene.revealed .invite { opacity: 1; transform: none; pointer-events: auto; }
+.meta {
+  margin: -2px 0 16px;
+  color: var(--mist);
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.headline {
+  margin: 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(42px, 6.4vw, 68px);
+  font-weight: 400;
+  line-height: .94;
+  color: #fff8ec;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px auto;
+  color: var(--gold);
+}
+.divider::before, .divider::after {
+  content: "";
+  width: min(84px, 16vw);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold));
+}
+.divider::after { transform: scaleX(-1); }
+.event {
+  margin: 0 0 12px;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-style: italic;
+  font-size: clamp(26px, 3.4vw, 36px);
+  color: #f3ddb0;
+}
+.subtitle {
+  max-width: 46ch;
+  margin: 0 auto 26px;
+  color: var(--mist);
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+.enter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #2a1b10;
+  background: linear-gradient(120deg, #fff3cc, #e4c48a 48%, #c9a15e);
+  border: 1px solid rgba(255, 255, 255, .55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 12px 28px rgba(0, 0, 0, .2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.enter svg { width: 16px; height: 16px; }
+.enter:hover { transform: translateY(-2px); }
+.footnote {
+  margin: 20px 0 0;
+  color: #b7ab9c;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .topbar { padding: 14px; }
+  .live-full { display: none; }
+  .plaque { padding: 26px 18px; }
+  .hint { font-size: 10px; letter-spacing: .08em; top: calc(50% + 118px); }
+  .shears { width: 168px; }
+}
+@media (max-height: 720px) {
+  .invite { margin-top: 92px; padding: 26px 20px 22px; }
+  .subtitle { margin-bottom: 16px; }
+  .valance, .valance-gold { height: 68px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .curtain, .plaque, .ribbon, .bow, .invite, .hint, .shears { transition: none !important; }
+  .dot, .hint, .spark { animation: none !important; }
+}
+</style>
+</head>
+<body>
+<main class="scene" id="scene">
+  <div class="glow"></div>
+  <div class="floor"></div>
+  <div class="glass-stage" aria-hidden="true"></div>
+  <div class="frame" aria-hidden="true"></div>
+  <div class="sparkles" id="sparkles" aria-hidden="true"></div>
+
+  <div class="plaque" id="plaque">
+    <p class="kicker" id="plaqueKicker">Governor Awards</p>
+    <p class="plaque-title" id="plaqueTitle">Virtual Launch</p>
+    <p class="plaque-note" id="plaqueNote">The curtains are opening</p>
+  </div>
+
+  <div class="ceremony">
+    <button type="button" class="cut-button" id="cutButton" disabled aria-label="Cut the ribbon">
+      <span class="ribbon left" aria-hidden="true"></span>
+      <span class="ribbon right" aria-hidden="true"></span>
+      <span class="bow" aria-hidden="true">
+        <i class="loop left"></i>
+        <i class="loop right"></i>
+        <i class="tail left"></i>
+        <i class="tail right"></i>
+        <i class="knot"></i>
+      </span>
+      <svg class="shears" id="shears" viewBox="0 0 240 240" aria-hidden="true">
+        <defs>
+          <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#fffaf0"/>
+            <stop offset="28%" stop-color="#f0d48a"/>
+            <stop offset="55%" stop-color="#8d6a32"/>
+            <stop offset="78%" stop-color="#fff1c9"/>
+            <stop offset="100%" stop-color="#b8924a"/>
+          </linearGradient>
+        </defs>
+        <g class="arm arm-left">
+          <path fill="url(#metal)" d="M116 130 C108 88 98 48 104 18 C112 6 124 12 120 26 C126 54 124 94 122 130 Z"/>
+          <path fill="rgba(255,255,255,.45)" d="M112 108 C110 78 108 48 112 28 C114 46 116 78 118 110 Z"/>
+          <path stroke="url(#metal)" stroke-width="8" stroke-linecap="round" fill="none" d="M114 132 C100 150 88 160 76 170"/>
+          <circle cx="68" cy="188" r="22" fill="#140c10" stroke="url(#metal)" stroke-width="8"/>
+        </g>
+        <g class="arm arm-right">
+          <path fill="url(#metal)" d="M124 130 C132 88 142 48 136 18 C128 6 116 12 120 26 C114 54 116 94 118 130 Z"/>
+          <path fill="rgba(255,255,255,.4)" d="M128 108 C130 78 132 48 128 28 C126 46 124 78 122 110 Z"/>
+          <path stroke="url(#metal)" stroke-width="8" stroke-linecap="round" fill="none" d="M126 132 C140 150 152 160 164 170"/>
+          <circle cx="172" cy="188" r="22" fill="#140c10" stroke="url(#metal)" stroke-width="8"/>
+        </g>
+        <circle cx="120" cy="128" r="8" fill="url(#metal)" stroke="#fff8e8" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <p class="hint" id="hint" hidden>Click the ribbon to cut</p>
+  </div>
+
+  <section class="invite" id="invite" aria-live="polite" aria-hidden="true" inert>
+    <p class="kicker" id="cardKicker">Governor Awards</p>
+    <p class="meta" id="eventMeta" hidden></p>
+    <h1 class="headline" id="headline">Officially<br>Launched</h1>
+    <div class="divider" aria-hidden="true">✦</div>
+    <p class="event" id="eventTitle">Governor Awards</p>
+    <p class="subtitle" id="eventSubtitle">With this live ceremony, the Governor Awards are officially open. Thank you for joining us — from wherever you are, you are part of this moment.</p>
+    <a class="enter" id="enterButton" href="https://governor.telangana.gov.in/Governance_EA/index.htm" target="_blank" rel="noopener noreferrer">
+      <span id="enterLabel">Enter Awards</span>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <p class="footnote" id="eventFootnote">Honour · Excellence · Pride</p>
+  </section>
+
+  <div class="curtain left" aria-hidden="true"></div>
+  <div class="curtain right" aria-hidden="true"></div>
+  <div class="valance-gold" aria-hidden="true"></div>
+  <div class="valance" aria-hidden="true"></div>
+</main>
+
+<header class="topbar">
+  <div class="live">
+    <span class="dot" aria-hidden="true"></span>
+    <span>Live</span>
+    <span class="live-full">· Governor Awards launch</span>
+  </div>
+  <div class="controls">
+    <button class="control" id="soundButton" type="button" aria-pressed="true">Sound on</button>
+    <button class="control replay" id="replayButton" type="button">Replay</button>
+  </div>
+</header>
+
+<script>
+/* ================================================================
+   GOVERNOR AWARDS — virtual launch
+   Curtains open on their own.
+   The ribbon is never cut until someone clicks it.
+   ================================================================ */
+const KICKER = "Governor Awards";
+const EVENT_TITLE = "Governor Awards";
+const PLAQUE_TITLE = "Virtual Launch";
+const HEADLINE = "Officially\nLaunched";
+const EVENT_SUBTITLE = "With this live ceremony, the Governor Awards are officially open. Thank you for joining us — from wherever you are, you are part of this moment.";
+const PLAQUE_NOTE = "Live ribbon cutting to launch the awards";
+const CUT_HINT = "Click the ribbon to launch";
+const FOOTNOTE = "Honour  ·  Excellence  ·  Pride";
+const BUTTON_LABEL = "Enter Awards";
+const REDIRECT_URL = "https://governor.telangana.gov.in/Governance_EA/index.htm";
+const CEREMONY_DATE = ""; // Example: "16 November 2026"
+const HOST_LINE = ""; // Example: "Presented with pride"
+const CURTAIN_DELAY = 1400;
+
+const scene = document.getElementById("scene");
+const shears = document.getElementById("shears");
+const invite = document.getElementById("invite");
+const cutButton = document.getElementById("cutButton");
+const hint = document.getElementById("hint");
+const soundButton = document.getElementById("soundButton");
+const sparkles = document.getElementById("sparkles");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+document.getElementById("plaqueKicker").textContent = KICKER;
+document.getElementById("cardKicker").textContent = KICKER;
+document.getElementById("plaqueTitle").textContent = PLAQUE_TITLE;
+document.getElementById("plaqueNote").textContent = PLAQUE_NOTE;
+document.getElementById("eventTitle").textContent = EVENT_TITLE;
+document.getElementById("eventSubtitle").textContent = EVENT_SUBTITLE;
+document.getElementById("eventFootnote").textContent = FOOTNOTE;
+document.getElementById("enterLabel").textContent = BUTTON_LABEL;
+hint.textContent = CUT_HINT;
+document.title = "Governor Awards | Virtual Launch";
+
+const headline = document.getElementById("headline");
+headline.replaceChildren();
+HEADLINE.split("\n").forEach((line, index) => {
+  if (index) headline.append(document.createElement("br"));
+  headline.append(document.createTextNode(line));
+});
+
+const meta = document.getElementById("eventMeta");
+const metaText = [CEREMONY_DATE, HOST_LINE].filter(Boolean).join("   ·   ");
+if (metaText) {
+  meta.hidden = false;
+  meta.textContent = metaText;
+}
+
+const enterButton = document.getElementById("enterButton");
+if (REDIRECT_URL) {
+  enterButton.href = REDIRECT_URL;
+  enterButton.target = "_blank";
+  enterButton.rel = "noopener noreferrer";
+}
+enterButton.addEventListener("click", (event) => {
+  if (!REDIRECT_URL) event.preventDefault();
+});
+
+let audio = null;
+let soundOn = true;
+let timers = [];
+let ready = false;
+let cutDone = false;
+
+function audioCtx() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!audio && Ctx) audio = new Ctx();
+  if (audio && audio.state === "suspended") {
+    soundButton.classList.add("needs-gesture");
+    audio.resume().catch(() => {});
+  } else {
+    soundButton.classList.remove("needs-gesture");
+  }
+  return audio;
+}
+function note(f, t, d, type, v, end) {
+  const c = audioCtx();
+  if (!c || !soundOn) return;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = type || "sine";
+  o.frequency.setValueAtTime(f, t);
+  if (end) o.frequency.exponentialRampToValueAtTime(end, t + d);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(v || 0.04, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g);
+  g.connect(c.destination);
+  o.start(t);
+  o.stop(t + d + 0.03);
+}
+function noise(t, d, v, cutoff) {
+  const c = audioCtx();
+  if (!c || !soundOn) return;
+  const buffer = c.createBuffer(1, Math.ceil(c.sampleRate * d), c.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  const source = c.createBufferSource();
+  const filter = c.createBiquadFilter();
+  const gain = c.createGain();
+  source.buffer = buffer;
+  filter.type = "lowpass";
+  filter.frequency.value = cutoff || 1800;
+  gain.gain.setValueAtTime(v, t);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(c.destination);
+  source.start(t);
+  source.stop(t + d);
+}
+function whoosh() {
+  const c = audioCtx();
+  if (!c || !soundOn) return;
+  noise(c.currentTime, 0.9, 0.07, 800);
+}
+function snip() {
+  const c = audioCtx();
+  if (!c || !soundOn) return;
+  const t = c.currentTime;
+  noise(t, 0.12, 0.16, 6200);
+  note(1480, t, 0.09, "triangle", 0.035, 360);
+  note(680, t + 0.04, 0.12, "sine", 0.028, 180);
+}
+function fanfare() {
+  const c = audioCtx();
+  if (!c || !soundOn) return;
+  const t = c.currentTime;
+  [[261.6, 329.6, 392, 523.3], [293.7, 370, 440, 587.3], [329.6, 415.3, 493.9, 659.3], [392, 493.9, 587.3, 784]].forEach((chord, i) => {
+    chord.forEach((f, j) => {
+      note(f, t + i * 0.26 + j * 0.015, 0.8, "triangle", 0.03);
+      note(f * 2, t + i * 0.26, 0.9, "sine", 0.012);
+    });
+  });
+}
+function burst() {
+  if (!window.confetti || reduceMotion) return;
+  const opts = {
+    ticks: 220,
+    gravity: 0.85,
+    decay: 0.92,
+    zIndex: 30,
+    colors: ["#e4c48a", "#fff4d4", "#f7f1e6", "#c4374e", "#ffffff"]
+  };
+  confetti({ ...opts, particleCount: 80, spread: 70, startVelocity: 36, origin: { x: 0.18, y: 0.62 } });
+  confetti({ ...opts, particleCount: 80, spread: 70, startVelocity: 36, origin: { x: 0.82, y: 0.62 } });
+  setTimeout(() => confetti({ ...opts, particleCount: 120, spread: 100, startVelocity: 42, origin: { x: 0.5, y: 0.42 } }), 200);
+}
+function stars() {
+  sparkles.replaceChildren();
+  if (reduceMotion) return;
+  for (let i = 0; i < 28; i++) {
+    const spark = document.createElement("i");
+    spark.className = "spark";
+    spark.style.left = Math.random() * 100 + "%";
+    spark.style.top = (30 + Math.random() * 55) + "%";
+    spark.style.animationDelay = Math.random() * 2 + "s";
+    spark.style.animationDuration = (2.8 + Math.random() * 1.8) + "s";
+    sparkles.append(spark);
+  }
+}
+function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+function clearTimers() {
+  timers.forEach(clearTimeout);
+  timers = [];
+}
+function showInvite() {
+  scene.classList.add("revealed");
+  document.body.classList.add("is-revealed");
+  invite.inert = false;
+  invite.removeAttribute("aria-hidden");
+  document.getElementById("plaque").setAttribute("aria-hidden", "true");
+}
+function armRibbon() {
+  if (ready) return;
+  ready = true;
+  scene.classList.add("ready");
+  cutButton.disabled = false;
+  hint.hidden = false;
+}
+function openCurtains() {
+  scene.classList.add("open");
+  whoosh();
+  if (reduceMotion) armRibbon();
+}
+function cutRibbon() {
+  if (!ready || cutDone) return;
+  cutDone = true;
+  cutButton.disabled = true;
+  shears.classList.add("snip");
+  scene.classList.add("cut");
+  snip();
+  later(() => {
+    scene.classList.add("fall");
+    burst();
+    fanfare();
+    stars();
+  }, reduceMotion ? 0 : 380);
+  later(() => showInvite(), reduceMotion ? 0 : 1400);
+}
+function resetScene() {
+  clearTimers();
+  ready = false;
+  cutDone = false;
+  document.body.classList.remove("is-revealed");
+  scene.classList.remove("open", "ready", "cut", "fall", "revealed");
+  shears.classList.remove("snip");
+  cutButton.disabled = true;
+  hint.hidden = true;
+  invite.inert = true;
+  invite.setAttribute("aria-hidden", "true");
+  document.getElementById("plaque").removeAttribute("aria-hidden");
+  sparkles.replaceChildren();
+}
+function start() {
+  audioCtx();
+  if (reduceMotion) {
+    openCurtains();
+    return;
+  }
+  later(openCurtains, CURTAIN_DELAY);
+}
+
+cutButton.addEventListener("click", () => {
+  audioCtx();
+  cutRibbon();
+});
+document.querySelector(".curtain.left").addEventListener("transitionend", (event) => {
+  if (event.propertyName === "transform") armRibbon();
+});
+soundButton.addEventListener("click", () => {
+  soundOn = !soundOn;
+  soundButton.textContent = soundOn ? "Sound on" : "Sound off";
+  soundButton.setAttribute("aria-pressed", String(soundOn));
+  const c = audioCtx();
+  if (!c) return;
+  if (soundOn) c.resume().then(() => note(660, c.currentTime, 0.18, "sine", 0.04)).catch(() => {});
+  else c.suspend().catch(() => {});
+});
+document.getElementById("replayButton").addEventListener("click", () => {
+  resetScene();
+  void scene.offsetWidth;
+  start();
+});
+document.addEventListener("pointerdown", () => { if (soundOn) audioCtx(); }, { once: true });
+
+start();
+</script>
+</body>
+</html>
